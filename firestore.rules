@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 60 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 120 &&
+             data.avatarEmoji is string && data.avatarEmoji.size() <= 20 &&
+             data.favoriteClub is string && data.favoriteClub.size() <= 60 &&
+             data.points is int && data.points >= 0 &&
+             data.winStreak is int && data.winStreak >= 0 &&
+             (data.virtualCoins is number || data.virtualCoins is int) &&
+             (!('favoriteChallenges' in data) || (data.favoriteChallenges is list && data.favoriteChallenges.size() <= 20)) &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 60 &&
+             data.avatarEmoji is string && data.avatarEmoji.size() <= 20 &&
+             data.favoriteClub is string && data.favoriteClub.size() <= 60 &&
+             data.points is int && data.points >= 0 &&
+             data.winStreak is int && data.winStreak >= 0 &&
+             data.weeklyWinRate is string && data.weeklyWinRate.size() <= 20 &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users private profile: read/write strictly scoped to owner
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().keys().hasAll(['userId', 'name', 'email', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'virtualCoins', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'name', 'email', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'virtualCoins', 'favoriteChallenges', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'virtualCoins', 'favoriteChallenges', 'updatedAt']);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+    }
+
+    // Leaderboard collection: read by any signed in user; create/update only by the owner
+    match /leaderboard/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'name', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'weeklyWinRate', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'name', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'weeklyWinRate', 'updatedAt']) &&
+                       isValidLeaderboardEntry(incoming());
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       isValidLeaderboardEntry(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatarEmoji', 'favoriteClub', 'points', 'winStreak', 'weeklyWinRate', 'updatedAt']);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+    }
+  }
+}

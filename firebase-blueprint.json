@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private profile of the authenticated user containing credentials and gameplay progression",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Google Auth UID of the user" },
+        "name": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "description": "User email address" },
+        "avatarEmoji": { "type": "string", "description": "User chosen avatar emoji" },
+        "favoriteClub": { "type": "string", "description": "User favorite football club" },
+        "points": { "type": "integer", "description": "Total user points in challenges" },
+        "winStreak": { "type": "integer", "description": "Current win streak count" },
+        "virtualCoins": { "type": "number", "description": "Virtual coins or squad budget" },
+        "favoriteChallenges": { "type": "array", "description": "List of favorite challenge IDs" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last updated timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": ["userId", "name", "email", "avatarEmoji", "favoriteClub", "points", "winStreak", "virtualCoins", "createdAt", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public leaderboard document representing a player's score for global ranking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Google Auth UID of the player" },
+        "name": { "type": "string", "description": "Player display name" },
+        "avatarEmoji": { "type": "string", "description": "Player avatar emoji" },
+        "favoriteClub": { "type": "string", "description": "Player favorite club" },
+        "points": { "type": "integer", "description": "Player total points" },
+        "winStreak": { "type": "integer", "description": "Player win streak" },
+        "weeklyWinRate": { "type": "string", "description": "Weekly win rate percentage" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last updated timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": ["userId", "name", "avatarEmoji", "favoriteClub", "points", "winStreak", "weeklyWinRate", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user account profile and settings"
+    },
+    "/leaderboard/{userId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Public leaderboard entry for global ranking"
+    }
+  }
+}
